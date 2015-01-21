@@ -1,0 +1,13 @@
+command:
+  commandName
+level:
+  0
+script: |
+  def commandName(name)
+    puts "Hello #{name}"
+    puts :pluginSample!
+    subMethods
+  end
+  def subMethods
+    puts "subMethods!!"
+  end
