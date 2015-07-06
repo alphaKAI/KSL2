@@ -25,6 +25,13 @@ Yet Another UNIX Like Shell Environment with Ruby.
 ```
   
   
+#Run
+```zsh
+% cd KSL2/bin
+% ./ksl
+```
+  
+  
 #Docments
 WIP  
   
