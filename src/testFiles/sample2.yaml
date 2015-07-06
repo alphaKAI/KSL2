@@ -1,0 +1,8 @@
+command:
+  testCommand
+level:
+  1
+script: |
+  def testCommand
+    puts "This is testCommand"
+  end

@@ -1,0 +1,8 @@
+command:
+  echo
+level:
+  0
+script: |
+  def echo(*args)
+    puts args.join " "
+  end

@@ -1,0 +1,13 @@
+command:
+  optTest
+level:
+  0
+script: |
+  require 'optparse'
+  def optTest(*args)
+    opt = OptionParser.new
+    opt.on('-a') {|v| puts "-a given!" }
+    opt.parse!(args)
+    
+    puts "opt Test"
+  end

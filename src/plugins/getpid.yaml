@@ -1,0 +1,8 @@
+command:
+  getpid
+level:
+  0
+script: |
+  def getpid
+    puts $$
+  end

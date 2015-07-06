@@ -1,0 +1,65 @@
+command:
+  ls
+level:
+  0
+script: |
+  require 'optparse'
+  def ls(*args)
+    mode = {
+      "allMode" => false,
+      "listMode" => false
+    }
+    opt = OptionParser.new
+    opt.on("-a") {|v| mode["allMode"] = true }
+    opt.on("-l") {|v| mode["listMode"] = true }
+    if args.include?("-al")
+     mode["allMode"] = true
+     mode["listMode"] = true
+     args.delete("-al")
+    end
+
+    opt.parse!(args)
+
+    targetDir = args.empty? ? Dir.pwd : args[0]
+
+    unless File.exists? targetDir
+      puts "#{targetDir} is not found"
+      return false
+    end
+    
+    if File.directory? targetDir
+
+      #Directory mode
+      items = Dir.entries(targetDir).map do |dir|
+        
+        unless mode["allMode"]
+          next if dir =~ /^\..*/
+        end
+        
+        color1 = 0
+        color2   = 0
+        
+        if File.directory? targetDir + "/" + dir
+          dir += "/"
+          color1 = 1
+          color2 = 34
+        end
+      
+        "\e[#{color1}m\e[#{color2}m#{dir}\e[0m"
+      end
+    else
+      puts targetDir
+    end
+
+    items.delete(nil)
+    items.each do |e|
+      if mode["listMode"]
+        puts e
+      else
+        print e + " "
+      end
+    end
+
+    puts "" unless mode["listMode"]
+  end
+

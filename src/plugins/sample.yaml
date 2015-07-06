@@ -3,8 +3,8 @@ command:
 level:
   0
 script: |
-  def commandName(name)
-    puts "Hello #{name}"
+  def commandName(name, age)
+    puts "Hello #{name} age#{age}"
     puts :pluginSample!
     subMethods
   end

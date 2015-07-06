@@ -1,0 +1,8 @@
+command:
+  roottest
+level:
+  1
+script: |
+  def roottest
+    puts "ROOT TEST"
+  end

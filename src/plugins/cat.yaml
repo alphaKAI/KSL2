@@ -1,0 +1,22 @@
+command:
+  cat
+level:
+  0
+script: |
+  def cat(*args)
+    if args.empty?
+      STDIN.each_line do |input|
+        print "\e[36m" + input + "\e[0m"
+      end
+    end
+    args.each do |e|
+      unless File.exists?(e)
+        puts "Not found - #{e}"
+        next
+      end
+
+      IO.foreach(e) do |line|
+        puts line
+      end
+    end
+  end
