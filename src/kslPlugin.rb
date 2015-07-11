@@ -29,10 +29,13 @@ module KSLPlugin
 
     def callable?(args)
       arr  = self.method(@commandName.to_sym).parameters.flatten
+      
       unless arr.include?(:req)
         return true
       end
+
       reqs = arr.count(:req)
+      
       if reqs != args.length
         puts "\"#{@commandName}\" command require #{reqs} arguments"
         return false
@@ -68,16 +71,19 @@ module KSLPlugin
 
       data = YAML.load(File.read(filepath))
       plugin = loadByHash(data)
+
       if plugin == false
         puts "This plugin is wrong."
         puts "script path : #{filepath}"
         puts "wrong point : #{data.keys - elements == [] ? elements - data.keys : data.keys - elements}"
         return false
       end
+
       return plugin
     end
     def loadByHash(data)
       elements = ["command", "level", "script"]
+      
       if data.keys - elements == [] and elements - data.keys == []
         return Plugin.new(data)
       else
@@ -128,6 +134,7 @@ module KSLPlugin
       @plugins.keys.each do |name|
         return true if name == pluginName
       end
+
       return false
     end
 
@@ -137,7 +144,6 @@ module KSLPlugin
       end
     end
 
-    #line is hash
     def exec(line)
       thisPlugin = @plugins[line["command"]]
 
@@ -209,8 +215,8 @@ module KSLPlugin
     private
     def splitLine(line)
       return {
-        "command"=>line.split[0],
-        "args"=>line.split[1..-1]
+        "command" => line.split[0],
+        "args"    => line.split[1..-1]
       }
     end
   end

@@ -8,16 +8,10 @@
   The MIT License.
 =end
 
-if __FILE__ == $0
-  require "./kslPlugin.rb"
-  require "./kslUsers.rb"
-  require "./kslUtils.rb"
-else
-  $srcPath = $KSL_Bin_Path + "/../src/"
-  require $srcPath + "kslPlugin.rb"
-  require $srcPath + "kslUsers.rb"
-  require $srcPath + "kslUtils.rb"
-end
+$srcPath = $KSL_Bin_Path + "/../src/"
+require $srcPath + "kslPlugin.rb"
+require $srcPath + "kslUsers.rb"
+require $srcPath + "kslUtils.rb"
 
 require "readline"
 require "socket"
@@ -30,17 +24,11 @@ module KSLCommandLine
 
     def initialize
       @currentMode = :normalMode
-      user = KSLUsers::KSLUser.new(Process::UID.eid == 0 ? 1 : 0, ENV["USER"])
-      @users = KSLUsers::KSLUsers.new(user)
-
+      user         = KSLUsers::KSLUser.new(Process::UID.eid == 0 ? 1 : 0, ENV["USER"])
+      @users       = KSLUsers::KSLUsers.new(user)
       @kpengine    = KSLPlugin::PluginEngine.new @users.currentUser
       @hostname    = Socket.gethostname
-
-      if __FILE__ == $0
-        @pluginDir = Dir.pwd + "/plugins"
-      else
-        @pluginDir = $srcPath + "/plugins"
-      end
+      @pluginDir   = $srcPath + "/plugins"
 
       Dir.entries(@pluginDir).each do |e|
         if e =~ /yaml$/
@@ -51,30 +39,29 @@ module KSLCommandLine
       @embeddedCommands = ["exit", "sudo", "cd", "sherb", "help", "users", "login", "createuser"]
       @pluginCommands   = @kpengine.kpstore.plugins.keys
       @commands         = @embeddedCommands + @pluginCommands
+
       puts "loaded plugins:"
       @kpengine.kpstore.showPlugins
     end
 
     def commandLine
       loop do
-        @pluginCommands   = @kpengine.kpstore.plugins.keys
-        @commands         = @embeddedCommands + @pluginCommands
+        @pluginCommands = @kpengine.kpstore.plugins.keys
+        @commands       = @embeddedCommands + @pluginCommands
 
         #initialize
         $stdin  = STDIN
         $stdout = STDOUT
 
         commands = @commands
-        entries = Dir.entries(Dir.pwd).map do |e|
-          next if e =~ /^\..*/
-          e
-        end
+        entries  = Dir.entries(Dir.pwd).select do |e| !(e =~ /^\..*/) end
+
         entries.delete(nil)
         commands += entries
 
-        Readline.completion_proc = proc{|word|
+        Readline.completion_proc = proc do |word|
           commands.grep(/\A#{Regexp.quote word}/)
-        }
+        end
 
         prompt = "\r\e[36m#{@users.currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
         inputLine = Readline.readline(prompt, true)
@@ -137,9 +124,11 @@ module KSLCommandLine
             end
           elsif inputLine =~ /^cd/
             args = inputLine.split
+
             if args[1].to_s.empty?
               args[1] = @users.currentUser.home
             end
+
             unless File.exist?(args[1])
               puts "no such file or directory: \'#{args[1]}\'"
             else
@@ -147,13 +136,14 @@ module KSLCommandLine
             end
           elsif inputLine =~ /^help/
             puts "commands:"
+            
             @commands.each do |e|
               puts "  " + e.to_s
             end
           elsif inputLine =~ /^sudo/
             @users.currentUser.sudo
           elsif inputLine =~ /^\.\D+.*$/
-            inputLine = inputLine[1..inputLine.size-1]
+            inputLine = inputLine[1..-1]
             puts "system => #{inputLine}"
             system(inputLine)
           elsif inputLine =~ /^sherb/
@@ -171,6 +161,7 @@ module KSLCommandLine
               "level"   => 0,
               "script"  => lines
             }
+
             @kpengine.kpstore.addPlugin @kpengine.kpl.loadByHash(pluginHash)
           elsif inputLine =~ /^users/
             @users.users.each do |user|
@@ -187,20 +178,17 @@ module KSLCommandLine
             end
           else
             unless @kpengine.engine inputLine
-              flag = false
-
               if File.directory?(inputLine.split[0])
                 Dir.chdir(inputLine.split[0])
                 break
               end
 
-              unless flag
-                puts "\"#{inputLine.split[0]}\" is not a KSL2 Command"
-                @commands.each do |e|
-                  if 1 <= match(e, inputLine.split[0].to_s) || 1 <= match(inputLine.split[0].to_s, e)
-                    e = "\e[35m" +  e + "\e[0m"
-                    puts "Did you mean \"#{e}\"?"
-                  end
+              puts "\"#{inputLine.split[0]}\" is not a KSL2 Command"
+
+              @commands.each do |e|
+                if 1 <= match(e, inputLine.split[0].to_s) || 1 <= match(inputLine.split[0].to_s, e)
+                  e = "\e[35m" +  e + "\e[0m"
+                  puts "Did you mean \"#{e}\"?"
                 end
               end
             end
