@@ -21,7 +21,6 @@ end
 
 require "readline"
 require "socket"
-require "trigram"
 
 include KSLUsers
 

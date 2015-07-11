@@ -39,7 +39,6 @@ WIP
   
 #Rquirements
 * Ruby 2.0.0 or later  
-* trigram gem
   
   
 #LICENSE
