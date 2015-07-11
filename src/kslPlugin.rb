@@ -81,6 +81,7 @@ module KSLPlugin
 
       return plugin
     end
+
     def loadByHash(data)
       elements = ["command", "level", "script"]
       
@@ -122,7 +123,7 @@ module KSLPlugin
     
     def disable(pluginName)
       if self.exists?(pluginName)
-        @plugins[pluginName].enabled = true
+        @plugins[pluginName].enabled = false
         return true
       else
         puts "[Error fail to disable plugin] : Not Found - #{pluginName}"
@@ -173,7 +174,7 @@ module KSLPlugin
           return false
         end
       else
-        puts "#{line["command"]} is disabled. If you want to use this plugin, use must enabled this plugin."
+        puts "#{line["command"]} is disabled. If you want to use this plugin, use must enable this plugin."
         return false
       end
     end
@@ -187,7 +188,7 @@ module KSLPlugin
     attr_accessor :kpl, :kpstore
     def initialize(kslUser)
       @ksluser = kslUser
-      @kpl = PluginLoader.new
+      @kpl     = PluginLoader.new
       @kpstore = PluginStore.new(@ksluser)
     end
 
@@ -204,7 +205,7 @@ module KSLPlugin
       end
     end
 
-    def enabled(pluginName)
+    def enable(pluginName)
       @kpstore.enable(pluginName)
     end
 

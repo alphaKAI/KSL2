@@ -36,7 +36,9 @@ module KSLCommandLine
         end
       end
 
-      @embeddedCommands = ["exit", "sudo", "cd", "sherb", "help", "users", "login", "createuser"]
+      @embeddedCommands = ["exit", "sudo", "cd", "sherb",
+                           "help", "users", "login", "createuser",
+                           "enablePlugin", "disablePlugin", "showPlugins"]
       @pluginCommands   = @kpengine.kpstore.plugins.keys
       @commands         = @embeddedCommands + @pluginCommands
 
@@ -176,6 +178,13 @@ module KSLCommandLine
             else
               @users.addUser userName
             end
+          #Plugin Manager
+          elsif inputLine =~ /^enablePlugin/
+            @kpengine.enable inputLine.split[1]
+          elsif inputLine =~ /^disablePlugin/
+            @kpengine.disable inputLine.split[1]
+          elsif inputLine =~ /showPlugins/
+            @kpengine.kpstore.showPlugins
           else
             unless @kpengine.engine inputLine
               if File.directory?(inputLine.split[0])
