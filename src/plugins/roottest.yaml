@@ -4,5 +4,5 @@ level:
   1
 script: |
   def roottest
-    puts "ROOT TEST"
+    puts "You have a root privilege!"
   end

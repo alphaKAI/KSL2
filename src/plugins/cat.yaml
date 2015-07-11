@@ -5,8 +5,8 @@ level:
 script: |
   def cat(*args)
     if args.empty?
-      STDIN.each_line do |input|
-        print "\e[36m" + input + "\e[0m"
+    $stdin.each do |input|
+        print input
       end
     end
     args.each do |e|

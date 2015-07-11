@@ -26,6 +26,7 @@ module KSLUsers
       @orgname   = @name
       @sudo      = false
       @config    = Hash.new
+      @configFilePath = $srcPath + "/config/#{@name}.yaml"
 
       loadUserConfig unless $WITHOUT_KSL_USER_CONFIG
     end
@@ -49,6 +50,10 @@ module KSLUsers
       else
         return false
       end
+    end
+
+    def home
+      return @config["home"]
     end
 
     def sudo
@@ -79,12 +84,20 @@ module KSLUsers
       end
     end
 
+    def delete
+      if auth("Please input password for #{@name}")
+        File.delete @configFilePath
+        puts "Your settings file has been removed"
+        puts " => Exit"
+        exit
+      end
+    end
+
     private
     def loadUserConfig
-      filepath = $srcPath + "/config/#{ENV["USER"]}.yaml"
-      userExists = File.exists?(filepath)
+      userExists = File.exists?(@configFilePath)
       if userExists
-        @config = YAML.load(File.read(filepath))
+        @config = YAML.load(File.read(@configFilePath))
       else
         puts "------------------"
         puts "#Initial settings wizard"
@@ -116,8 +129,8 @@ module KSLUsers
 
         puts "Your setting file has been created."
         puts "You can edit the setting file anytime."
-        puts "The file is located on #{File.expand_path($srcPath + "/config/" + ENV["USER"] + ".yaml")}"
-        File.write($srcPath + "/config/" + ENV["USER"] + ".yaml", YAML.dump(@config))
+        puts "The file is located on #{File.expand_path(@configFilePath)}"
+        File.write(@configFilePath, YAML.dump(@config))
         puts "------------------"
       end
     end
@@ -127,8 +140,97 @@ module KSLUsers
   KSLUsers Class
   The user management System.
 =end
-  #Todo: Implement
   class KSLUsers
+    attr_reader :currentUser, :nestedLogin
+    def initialize(owner = nil)
+      @users = {}
+      @currentUser = nil
+      @prevUser    = []
+      @nestedLogin = false
 
+      if owner
+        @users[owner.name] = owner
+        @currentUser = owner
+      end
+
+      @usersFileDir = $srcPath + "/config/"
+      loadUsers
+    end
+
+    def users
+      return @users.keys
+    end
+
+    def userExists?(userName)
+      return users.include?(userName)
+    end
+
+    def addUser(userName)
+      unless userExists?(userName)
+        @users[userName] = KSLUser.new(0, userName)
+        puts "[add user success] : User name \"#{userName}\""
+      else
+        puts "[add user fail] : User name \"#{userName}\" is alerady exists."
+      end
+    end
+
+    def removeUser(userName)
+      if userExists?(userName)
+        print "Really delete \"#{userName}\"? [Y/N] : "
+
+        if STDIN.gets.chomp.downcase == "y"
+          if @users[userName].delete
+            @users.delete(userName)
+          end
+        end
+      end
+    end
+
+    def login(userName)
+      unless userExists?(userName)
+        puts "User \"#{userName}\" is not exists"
+        return false
+      else
+        if @users[userName].auth("Please input password for #{userName}")
+          @prevUser.push @currentUser
+          @currentUser = KSLUser.new(0, userName)
+          @users[@currentUser.name] = @currentUser
+          @nestedLogin = true
+          return true
+        else
+          puts "[login failed] : authorization failed"
+          return false
+        end
+      end
+    end
+
+    def logout
+      @currentUser = @prevUser.pop
+      if @prevUser.empty?
+        @nestedLogin = false
+      end
+    end
+
+    def exit
+      if @currentUser.exit
+        return true
+      elsif nestedLogin
+        logout
+        return false
+      else
+        return false
+      end
+    end
+
+    private
+    def loadUsers
+      Dir.entries(@usersFileDir).each do |e|
+        next if e == "." || e == ".."
+        unless userExists?(e)
+          e = File.basename(e, ".yaml")
+          @users[e] = KSLUser.new(0, e)
+        end
+      end
+    end
   end
 end

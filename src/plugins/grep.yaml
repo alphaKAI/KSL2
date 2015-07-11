@@ -1,0 +1,55 @@
+command:
+  grep
+level:
+  0
+script: |
+  def grep(*args)
+    args = args.map do |e| e.chomp end
+
+    if args.length == 1
+      ptn = /(#{args[0]})/
+
+      $stdin.each do |input|
+        if input =~ ptn
+          puts _grep(input, ptn)
+        end
+      end
+
+      return true
+    end
+
+    if args.length == 2
+      ptn = /(#{args[0]})/
+      fptn = args[1]
+
+      Dir.glob(fptn) do |e|
+        next if e == "." || e == ".."
+
+        array = []
+        IO.foreach(e) do |line|
+          if line =~ ptn
+            array << _grep(line, ptn)
+          end
+        end
+
+        unless array.empty?
+          array.each do |line|
+            puts "\e[35m#{e}:\e[0m: #{line}"
+          end
+        end
+      end
+    end
+  end
+
+  def _grep(input, ptn)
+      #input = input.split(ptn).select do |s| !s.empty? end
+      input = input.split(ptn).map do |e|
+        if e =~ ptn
+          "\e[31m" + e + "\e[0m"
+        else
+          e
+        end
+      end.join
+
+    input
+  end

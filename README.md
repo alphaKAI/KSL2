@@ -13,6 +13,7 @@ Yet Another UNIX Like Shell Environment with Ruby.
 * The strongest Plugin System
   - You can implement your original plugin with Ruby.
 * User System
+* Pipe support
 * and more
   
   
@@ -32,18 +33,13 @@ Yet Another UNIX Like Shell Environment with Ruby.
 ```
   
   
-#Docments
+#Documents
 WIP  
   
   
 #Rquirements
 * Ruby 2.0.0 or later  
 * trigram gem
-  
-  
-#Todo
-* Pipe
-* User managment system
   
   
 #LICENSE
