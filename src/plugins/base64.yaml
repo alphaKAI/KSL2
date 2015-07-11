@@ -27,9 +27,6 @@ script: |
       args[:from] = e[0]
       args[:to]   = e[1]}
 
-    if arguments.empty?
-      arguments << "-h"
-    end
     opt.parse!(arguments)
 
     if mode == :encode

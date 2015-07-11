@@ -152,7 +152,7 @@ module KSLCommandLine
             end
           elsif inputLine =~ /^sudo/
             @users.currentUser.sudo
-          elsif inputLine =~ /^\.\D+$/
+          elsif inputLine =~ /^\.\D+.*$/
             inputLine = inputLine[1..inputLine.size-1]
             puts "system => #{inputLine}"
             system(inputLine)
