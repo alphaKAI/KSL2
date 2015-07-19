@@ -1,6 +1,6 @@
 #encoding:utf-8
 $WITHOUT_KSL_USER_CONFIG = true
-
+$srcPath = "/../src/"
 require_relative "../kslPlugin.rb"
 require_relative "../kslUsers.rb"
 
