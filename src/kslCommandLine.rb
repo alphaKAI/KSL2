@@ -33,8 +33,8 @@ module KSLCommandLine
       Dir.entries(@pluginDir).each do |e|
         if e =~ /yaml$/
           @kpengine.kpstore.addPlugin @kpengine.kpl.load(@pluginDir + "/" + e)
-        end
-      end
+        end# End of if
+      end# End of each
 
       @embeddedCommands = ["exit", "sudo", "cd", "sherb",
                            "help", "users", "login", "createuser",
@@ -52,7 +52,7 @@ module KSLCommandLine
         @pluginCommands = @kpengine.kpstore.plugins.keys
         @commands       = @embeddedCommands + @pluginCommands
 
-        #initialize
+        # initialize
         $stdin  = STDIN
         $stdout = STDOUT
 
@@ -62,7 +62,7 @@ module KSLCommandLine
         entries.delete(nil)
         commands += entries
 
-        commands += @users.currentUser.aliases.values
+        commands += @users.currentUser.aliases.keys
 
         Readline.completion_proc = proc do |word|
           commands.grep(/\A#{Regexp.quote word}/)
@@ -70,85 +70,88 @@ module KSLCommandLine
 
         prompt = "\r\e[36m#{@users.currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
         inputLine = Readline.readline(prompt, true)
-        #print "\r\e[36m#{@currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
-        #inputLine = STDIN.gets.chomp
 
-        #Replace by alias table
+        # Alias -> Replace by alias table
         inputLine = replaceStringbyTable(@users.currentUser.aliases, inputLine, :headFlag => true)
 
         pipeFlag = false
-        commands = []
-        i = 0
+        commands = Array.new
+        indexOfCommands = 0
+
+        #Todo : Change - split pattern
         inputLine.split.each do |arg|
           if arg == "|"
             pipeFlag = true
-            i += 1
+            indexOfCommands += 1
             next
           elsif arg == "&&" || arg == ";"
-            i += 1
+            indexOfCommands += 1
             next
-          end
+          end# End of if
 
-          if commands[i] == nil
-            commands[i] = arg + " "
+          if commands[indexOfCommands] == nil
+            commands[indexOfCommands] = arg + " "
           else
-            commands[i] += arg + " "
-          end
-        end
+            commands[indexOfCommands] += arg + " "
+          end# End of if
+        end# End of each
 
-        pipes = []
+        pipes = Array.new
+
         if pipeFlag
           pipes = Array.new(commands.count - 1){ IO.pipe }
           pipes = [STDIN, pipes.flatten.reverse, STDOUT].flatten
-        end
+        end# End of if
 
         commands.each do |command|
           rr = nil
           ww = nil
+
           if pipeFlag
             rr, ww = pipes.shift 2
             $stdin  = rr if rr
             $stdout = ww if ww
-          end
+          end# End of if
 
-          #Embedded Functions
+          # Embedded Functions
           inputLine = command
           inputLine.gsub!("~/", ENV["HOME"] + "/")
-
           redirectFlag = false
+
           if inputLine =~ /.*\s>(.*)/
             fname = $1.delete(" ")
             $stdout = File.open(fname, "w")
             inputLine.gsub!(/\s?>.*/, "")
             redirectFlag = true
-          end
+          end# End of if
 
+          # Todo: remove split -> regex
           if inputLine =~ /^exit/
             if @users.exit
               if @users.nestedLogin
                 @users.logout
               else
                 return :exitKSL
-              end
-            end
+              end# End of if
+            end# End of if
           elsif inputLine =~ /^cd/
             args = inputLine.split
 
             if args[1].to_s.empty?
               args[1] = @users.currentUser.home
-            end
+            end# End of if
 
             unless File.exist?(args[1])
               puts "no such file or directory: \'#{args[1]}\'"
             else
               Dir.chdir(args[1])
-            end
+            end#End of if
           elsif inputLine =~ /^help/
             puts "commands:"
             
             @commands.each do |e|
               puts "  " + e.to_s
-            end
+            end# End of if
           elsif inputLine =~ /^sudo/
             @users.currentUser.sudo
           elsif inputLine =~ /^\.\D+.*$/
@@ -163,7 +166,7 @@ module KSLCommandLine
             STDIN.each_line do |input|
               print "=> "
               lines += input
-            end
+            end# End of if
 
             pluginHash = {
               "command" => pluginName,
@@ -175,7 +178,7 @@ module KSLCommandLine
           elsif inputLine =~ /^users/
             @users.users.each do |user|
               puts user
-            end
+            end# End of each
           elsif inputLine =~ /^login/
             @users.login inputLine.split[1]
           elsif inputLine =~ /^createuser/
@@ -184,8 +187,8 @@ module KSLCommandLine
               puts "Empty user name is not allowed."
             else
               @users.addUser userName
-            end
-          #Plugin Manager
+            end# End of if
+          # Plugin Manager
           elsif inputLine =~ /^pluginManager/
             pluginLine = inputLine.split("pluginManager")[1]
             if pluginLine =~ /enable/
@@ -194,7 +197,7 @@ module KSLCommandLine
               @kpengine.disable pluginLine.split[1]
             elsif pluginLine =~ /list/
               @kpengine.kpstore.showPlugins
-            end
+            end# End of if
           elsif inputLine =~ /^rbitpr/
             eval(inputLine.split("rbitpr")[1])
           elsif inputLine =~ /^aliases/
@@ -202,18 +205,18 @@ module KSLCommandLine
           elsif inputLine =~ /^alias/
             inputLine.gsub!("alias ", "")
             unless inputLine.include?("=")
-              puts "[Error -> Add alias failed] : Your foramt wrong"
+              puts "[Error -> Add alias failed] : Your foramt is wrong"
             else
               puts "Add alias : #{{inputLine.split("=")[0].strip => inputLine.split("=")[1..-1].join("=").strip}}"
               @users.currentUser.addAlias({
                 :contracted => inputLine.split("=")[0].strip,
-                :expanded => inputLine.split("=")[1..-1].join("=").strip
+                :expanded   => inputLine.split("=")[1..-1].join("=").strip
               })
-            end
+            end# End of if
           elsif inputLine =~ /^unalias/
             inputLine.split[1..-1].each do |e|
               @users.currentUser.unalias(e)
-            end
+            end# End of each
           elsif inputLine =~ /^saveConfig/
             @users.currentUser.saveConfig
           else
@@ -221,7 +224,7 @@ module KSLCommandLine
               if File.directory?(inputLine.split[0])
                 Dir.chdir(inputLine.split[0])
                 break
-              end
+              end# End of if
 
               puts "\"#{inputLine.split[0]}\" is not a KSL2 Command"
 
@@ -229,24 +232,22 @@ module KSLCommandLine
                 if 1 <= match(e, inputLine.split[0].to_s) || 1 <= match(inputLine.split[0].to_s, e)
                   e = "\e[35m" +  e + "\e[0m"
                   puts "Did you mean \"#{e}\"?"
-                end
-              end
-            end
-          end
+                end# End of if
+              end# End of each
+            end#End of unless
+          end# End of if
 
-          if redirectFlag
-            $stdout = STDOUT
-          end
+          $stdout = STDOUT if redirectFlag
 
           if pipeFlag
             rr.close if rr && rr != STDIN
             ww.close if ww && ww != STDOUT
             $stdout = STDOUT
             $stdin  = STDIN
-          end
-        end
-      end
-    end
+          end# End of if
+        end# End of each
+      end# End of loop
+    end# End of method
 
     private
     def getPrompt
@@ -254,10 +255,10 @@ module KSLCommandLine
         return "# "
       else
         return "% "
-      end
-    end
-  end
-end
+      end# End of if
+    end# End of method
+  end# End of class
+end# End of module
 
 if __FILE__ == $0
   kcl = KSLCommandLine::KSLCommandLine.new

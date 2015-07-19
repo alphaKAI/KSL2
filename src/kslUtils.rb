@@ -35,7 +35,7 @@ module KSLUtils
     conversionTable.each do |key, value|
       ptn = /#{key}/
       if flags[:headFlag]
-        ptn = /^#{key}/
+        ptn = /^#{key}$/
       end
       if returnString =~ ptn
         returnString = returnString.gsub(key, value)
