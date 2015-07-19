@@ -28,4 +28,30 @@ module KSLUtils
 
     return count
   end
+
+  def replaceStringbyTable(conversionTable, targetString, flags = nil)
+    returnString = targetString
+    
+    conversionTable.each do |key, value|
+      ptn = /#{key}/
+      if flags[:headFlag]
+        ptn = /^#{key}/
+      end
+      if returnString =~ ptn
+        returnString = returnString.gsub(key, value)
+      end
+    end
+
+    return returnString
+  end
+
+  def swapHashKeyValue(hash)
+    returnHash = Hash.new
+
+    hash.each do |key, value|
+      returnHash[value] = key
+    end
+
+    return returnHash
+  end
 end

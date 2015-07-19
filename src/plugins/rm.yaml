@@ -1,0 +1,19 @@
+command:
+  rm
+level:
+  0
+script: |
+  def rm(*args)
+    if args.length < 1
+      puts "Error - Empty filename is not permitted"
+      return false
+    end
+
+    args.each do |arg|
+      if File.exists?(arg) && File.file?(arg)
+        File.delete(arg)
+      else
+        puts "#{arg} is not exists!"
+      end
+    end
+  end

@@ -56,6 +56,27 @@ module KSLUsers
       return @config["home"]
     end
 
+    def aliases
+      _aliases = @config["aliases"]
+      if _aliases
+        return _aliases
+      else
+        return Hash.new
+      end
+    end
+
+    def addAlias(aliasHash)
+      @config["aliases"][aliasHash[:contracted]] = aliasHash[:expanded]
+    end
+
+    def unalias(aliasName)
+      @config["aliases"].delete(aliasName)
+    end
+
+    def saveConfig
+      File.write(@configFilePath, YAML.dump(@config))
+    end
+
     def sudo
       success = false
       
@@ -127,10 +148,12 @@ module KSLUsers
           @config["home"] = ENV["HOME"]
         end
 
+        @config["aliases"] = Hash.new
+
         puts "Your setting file has been created."
         puts "You can edit the setting file anytime."
         puts "The file is located on #{File.expand_path(@configFilePath)}"
-        File.write(@configFilePath, YAML.dump(@config))
+        saveConfig
         puts "------------------"
       end
     end

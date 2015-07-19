@@ -1,0 +1,19 @@
+command:
+  touch
+level:
+  0
+script: |
+  def touch(*args)
+    if args.length < 1
+      puts "Error - Empty filename is not permitted"
+      return false
+    end
+
+    args.each do |arg|
+      unless File.exists?(arg)
+        File.open(arg, "w").close()
+      else
+        puts "#{arg} is already exists!"
+      end
+    end
+  end

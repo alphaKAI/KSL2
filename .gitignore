@@ -2,5 +2,6 @@ alphakai.yaml
 root.yaml
 fileLen.rb
 Session.vim
+todo
 .*.swp
 .*.*.swp

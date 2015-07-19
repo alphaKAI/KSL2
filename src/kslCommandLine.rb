@@ -38,7 +38,8 @@ module KSLCommandLine
 
       @embeddedCommands = ["exit", "sudo", "cd", "sherb",
                            "help", "users", "login", "createuser",
-                           "enablePlugin", "disablePlugin", "showPlugins"]
+                           "pluginManager", "enable", "disable", "list",
+                           "rbitpr", "aliases", "alias", "unalias", "saveConfig"]
       @pluginCommands   = @kpengine.kpstore.plugins.keys
       @commands         = @embeddedCommands + @pluginCommands
 
@@ -61,6 +62,8 @@ module KSLCommandLine
         entries.delete(nil)
         commands += entries
 
+        commands += @users.currentUser.aliases.values
+
         Readline.completion_proc = proc do |word|
           commands.grep(/\A#{Regexp.quote word}/)
         end
@@ -69,6 +72,9 @@ module KSLCommandLine
         inputLine = Readline.readline(prompt, true)
         #print "\r\e[36m#{@currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
         #inputLine = STDIN.gets.chomp
+
+        #Replace by alias table
+        inputLine = replaceStringbyTable(@users.currentUser.aliases, inputLine, :headFlag => true)
 
         pipeFlag = false
         commands = []
@@ -111,7 +117,8 @@ module KSLCommandLine
 
           redirectFlag = false
           if inputLine =~ /.*\s>(.*)/
-            $stdout = File.open($1, "w")
+            fname = $1.delete(" ")
+            $stdout = File.open(fname, "w")
             inputLine.gsub!(/\s?>.*/, "")
             redirectFlag = true
           end
@@ -179,12 +186,36 @@ module KSLCommandLine
               @users.addUser userName
             end
           #Plugin Manager
-          elsif inputLine =~ /^enablePlugin/
-            @kpengine.enable inputLine.split[1]
-          elsif inputLine =~ /^disablePlugin/
-            @kpengine.disable inputLine.split[1]
-          elsif inputLine =~ /showPlugins/
-            @kpengine.kpstore.showPlugins
+          elsif inputLine =~ /^pluginManager/
+            pluginLine = inputLine.split("pluginManager")[1]
+            if pluginLine =~ /enable/
+              @kpengine.enable pluginLine.split[1]
+            elsif pluginLine =~ /disable/
+              @kpengine.disable pluginLine.split[1]
+            elsif pluginLine =~ /list/
+              @kpengine.kpstore.showPlugins
+            end
+          elsif inputLine =~ /^rbitpr/
+            eval(inputLine.split("rbitpr")[1])
+          elsif inputLine =~ /^aliases/
+            p @users.currentUser.aliases
+          elsif inputLine =~ /^alias/
+            inputLine.gsub!("alias ", "")
+            unless inputLine.include?("=")
+              puts "[Error -> Add alias failed] : Your foramt wrong"
+            else
+              puts "Add alias : #{{inputLine.split("=")[0].strip => inputLine.split("=")[1..-1].join("=").strip}}"
+              @users.currentUser.addAlias({
+                :contracted => inputLine.split("=")[0].strip,
+                :expanded => inputLine.split("=")[1..-1].join("=").strip
+              })
+            end
+          elsif inputLine =~ /^unalias/
+            inputLine.split[1..-1].each do |e|
+              @users.currentUser.unalias(e)
+            end
+          elsif inputLine =~ /^saveConfig/
+            @users.currentUser.saveConfig
           else
             unless @kpengine.engine inputLine
               if File.directory?(inputLine.split[0])
