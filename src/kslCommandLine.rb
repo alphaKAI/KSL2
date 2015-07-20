@@ -72,8 +72,10 @@ module KSLCommandLine
         inputLine = Readline.readline(prompt, true)
 
         # Alias -> Replace by alias table
-        commandName = replaceStringbyTable(@users.currentUser.aliases, inputLine.split[0], :headFlag => true)
-        inputLine = ([commandName] + inputLine.split[1..-1]).join(" ")
+        unless inputLine.delete(" ") == ""
+          commandName = replaceStringbyTable(@users.currentUser.aliases, inputLine.split[0], :headFlag => true)
+          inputLine = ([commandName] + inputLine.split[1..-1]).join(" ")
+        end
 
         pipeFlag = false
         commands = Array.new
