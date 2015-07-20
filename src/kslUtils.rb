@@ -12,16 +12,16 @@ module KSLUtils
   end
 
   def match(str, pattern)
-    p_length = pattern.length
-    s_lebgth = str.length
-    count    = 0
+    patternLength = pattern.length
+    strLength     = str.length
+    count         = 0
 
-    s_lebgth.times do |i|
-      tmp_s = []
-      p_length.times do |j|
-        tmp_s[j] = str[i + j]
+    strLength.times do |i|
+      tmpStr = []
+      patternLength.times do |j|
+        tmpStr[j] = str[i + j]
       end
-      if tmp_s.join == pattern
+      if tmpStr.join == pattern
         count+=1
       end
     end
