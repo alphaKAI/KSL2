@@ -215,10 +215,10 @@ module KSLUsers
         return false
       else
         if @users[userName].auth("Please input password for #{userName}")
-          @prevUser.push @currentUser
+          @prevUser.push(@currentUser)
+          @nestedLogin = true
           @currentUser = KSLUser.new(0, userName)
           @users[@currentUser.name] = @currentUser
-          @nestedLogin = true
           return true
         else
           puts "[login failed] : authorization failed"

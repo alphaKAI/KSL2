@@ -58,23 +58,21 @@ module KSLCommandLine
 
         commands = @commands
         entries  = Dir.entries(Dir.pwd).select do |e| !(e =~ /^\..*/) end
-
         entries.delete(nil)
         commands += entries
-
         commands += @users.currentUser.aliases.keys
 
         Readline.completion_proc = proc do |word|
           commands.grep(/\A#{Regexp.quote word}/)
         end
 
-        prompt = "\r\e[36m#{@users.currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
+        prompt    = "\r\e[36m#{@users.currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
         inputLine = Readline.readline(prompt, true)
 
         # Alias -> Replace by alias table
         unless inputLine.delete(" ") == ""
           commandName = replaceStringbyTable(@users.currentUser.aliases, inputLine.split[0], :headFlag => true)
-          inputLine = ([commandName] + inputLine.split[1..-1]).join(" ")
+          inputLine   = ([commandName] + inputLine.split[1..-1]).join(" ")
         end
 
         pipeFlag = false
@@ -111,7 +109,7 @@ module KSLCommandLine
           ww = nil
 
           if pipeFlag
-            rr, ww = pipes.shift 2
+            rr, ww  = pipes.shift 2
             $stdin  = rr if rr
             $stdout = ww if ww
           end# End of if
@@ -122,7 +120,7 @@ module KSLCommandLine
           redirectFlag = false
 
           if inputLine =~ /.*\s>(.*)/
-            fname = $1.delete(" ")
+            fname   = $1.delete(" ")
             $stdout = File.open(fname, "w")
             inputLine.gsub!(/\s?>.*/, "")
             redirectFlag = true

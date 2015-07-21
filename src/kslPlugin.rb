@@ -15,20 +15,20 @@ module KSLPlugin
   Plugin Class
   All of the plugins runs as instance of this class.
 =end
+  PLUGIN_ELEMENTS = ["command", "level", "script"]
   class Plugin
-    attr_reader :commandName, :script, :level, :elements
+    attr_reader :commandName, :script, :level
     attr_accessor :enabled
     def initialize(hash)
       @commandName = hash["command"]
       @script      = hash["script"]
       @level       = hash["level"]
-      @elements    = ["command", "script", "level"]
       @enabled     = false
       @evaled      = false
     end
 
     def callable?(args)
-      arr  = self.method(@commandName.to_sym).parameters.flatten
+      arr = self.method(@commandName.to_sym).parameters.flatten
       
       unless arr.include?(:req)
         return true
@@ -75,7 +75,7 @@ module KSLPlugin
       if plugin == false
         puts "This plugin is wrong."
         puts "script path : #{filepath}"
-        puts "wrong point : #{data.keys - elements == [] ? elements - data.keys : data.keys - elements}"
+        puts "wrong point : #{data.keys - PLUGIN_ELEMENTS == [] ? PLUGIN_ELEMENTS - data.keys : data.keys - PLUGIN_ELEMENTS}"
         return false
       end
 
@@ -83,9 +83,7 @@ module KSLPlugin
     end
 
     def loadByHash(data)
-      elements = ["command", "level", "script"]
-      
-      if data.keys - elements == [] and elements - data.keys == []
+      if data.keys - PLUGIN_ELEMENTS == [] and PLUGIN_ELEMENTS - data.keys == []
         return Plugin.new(data)
       else
         return false
@@ -173,6 +171,7 @@ module KSLPlugin
           puts "You are not permitted to execute this command."
           return false
         end
+
       else
         puts "#{line["command"]} is disabled. If you want to use this plugin, use must enable this plugin."
         return false
