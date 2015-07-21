@@ -21,7 +21,6 @@ Yet Another UNIX Like Shell Environment with Ruby.
 ```zsh
 % mkdir PATH/TO/INSTALLDIR
 % cd PATH/TO/INSTALLDIR
-% gem install trigram
 % git clone https://github.com/alphaKAI/KSL2
 ```
   
