@@ -12,7 +12,7 @@ $srcPath = $KSL_Bin_Path + "/../src/"
 require $srcPath + "kslPlugin.rb"
 require $srcPath + "kslUsers.rb"
 require $srcPath + "kslUtils.rb"
-
+require $srcPath + "kslExecuteMachine.rb"
 require "readline"
 require "socket"
 
@@ -25,16 +25,17 @@ module KSLCommandLine
     def initialize
       @currentMode = :normalMode
       user         = KSLUsers::KSLUser.new(Process::UID.eid == 0 ? 1 : 0, ENV["USER"])
-      @users       = KSLUsers::KSLUsers.new(user)
+      @users       = KSLUsers::KSLUsers.new user
       @kpengine    = KSLPlugin::PluginEngine.new @users.currentUser
+      @kemachine   = KSLExecuteMachine::ExecuteMachine.new
       @hostname    = Socket.gethostname
       @pluginDir   = $srcPath + "/plugins"
 
       Dir.entries(@pluginDir).each do |e|
         if e =~ /yaml$/
           @kpengine.kpstore.addPlugin @kpengine.kpl.load(@pluginDir + "/" + e)
-        end# End of if
-      end# End of each
+        end
+      end
 
       @embeddedCommands = ["exit", "sudo", "cd", "sherb",
                            "help", "users", "login", "createuser",
@@ -42,6 +43,185 @@ module KSLCommandLine
                            "rbitpr", "aliases", "alias", "unalias", "saveConfig"]
       @pluginCommands   = @kpengine.kpstore.plugins.keys
       @commands         = @embeddedCommands + @pluginCommands
+
+      @kemachine.registerEventsByHash({
+        :exit => {
+          :pattern => /^exit/,
+          :lambda  => lambda do |arguments, inputLine|
+            if @users.exit
+              if @users.nestedLogin
+                @users.logout
+              else
+                return :exitKSL
+              end
+            end
+          end
+        },
+        :cd => {
+          :pattern => /^cd/,
+          :lambda  => lambda do |arguments, inputLine|
+            if arguments[1].to_s.empty?
+              arguments[1] = @users.currentUser.home
+            end
+
+            unless File.exist? arguments[1]
+              puts "no such file or directory: \'#{arguments[1]}\'"
+            else
+              Dir.chdir arguments[1]
+            end
+          end
+        },
+        :help => {
+          :pattern => /^help/,
+          :lambda  => lambda do |arguments, inputLine|
+            puts "commands:"
+
+            @commands.each do |e|
+              puts "  " + e.to_s
+            end
+          end
+        },
+        :sudo => {
+          :pattern => /^sudo/,
+          :lambda  => lambda do |arguments, inputLine|
+            @users.currentUser.sudo
+          end
+        },
+        :dot => {
+          :pattern => /^\.\D+.*$/,
+          :lambda => lambda do |arguments, inputLine|
+            inputLine = inputLine[1..-1]
+
+            puts "system => #{inputLine}"
+
+            system(inputLine)
+          end
+        },
+        :sherb => {
+          :pattern =>  /^sherb/,
+          :lambda  => lambda do |arguments, inputLine|
+            pluginName = arguments[1]
+
+            print "=> "
+            lines = ""
+
+            STDIN.each_line do |input|
+              print "=> "
+              lines += input
+            end
+
+            pluginHash = {
+              "command" => pluginName,
+              "level"   => 0,
+              "script"  => lines
+            }
+
+            @kpengine.kpstore.addPlugin @kpengine.kpl.loadByHash(pluginHash)
+          end
+        },
+        :users => {
+          :pattern => /^users/,
+          :lambda  => lambda do |arguments, inputLine|
+            @users.users.each do |_user|
+              puts _user
+            end
+          end
+        },
+        :login => {
+          :pattern => /^login/,
+          :lambda  => lambda do |arguments, inputLine|
+            @users.login arguments[1]
+          end
+        },
+        :createuser => {
+          :pattern => /^createuser/,
+          :lambda  => lambda do |arguments, inputLine|
+            userName = arguments[1]
+
+            if userName == "" || userName == nil
+              puts "Empty user name is not allowed."
+            else
+              @users.addUser userName
+            end
+          end
+        },
+        :pluginManager => {
+          :pattern => /^pluginManager/,
+          :lambda  => lambda do |arguments, inputLine|
+            pluginLine = inputLine.split("pluginManager")[1]
+
+            if pluginLine =~ /enable/
+              @kpengine.enable pluginLine.split[1]
+            elsif pluginLine =~ /disable/
+              @kpengine.disable pluginLine.split[1]
+            elsif pluginLine =~ /list/
+              @kpengine.kpstore.showPlugins
+            end
+          end
+        },
+        :rbitpr => {
+          :pattern => /^rbitpr/,
+          :lambda  => lambda do |arguments, inputLine|
+            eval(inputLine.split("rbitpr")[1])
+          end
+        },
+        :aliases => {
+          :pattern => /^aliases/,
+          :lambda  => lambda do |arguments, inputLine|
+            p @users.currentUser.aliases
+          end
+        },
+        :alias => {
+          :pattern => /^alias/,
+          :lambda  => lambda do |arguments, inputLine|
+            inputLine.gsub!("alias ", "")
+            
+            unless inputLine.include?("=")
+              puts "[Error -> Add alias failed] : Your foramt is wrong"
+            else
+              puts "Add alias : #{{inputLine.split("=")[0].strip => inputLine.split("=")[1..-1].join("=").strip}}"
+              @users.currentUser.addAlias({
+                :contracted => inputLine.split("=")[0].strip,
+                :expanded   => inputLine.split("=")[1..-1].join("=").strip
+              })
+            end
+          end
+        },
+        :unalias => {
+          :pattern => /^unalias/,
+          :lambda  => lambda do |arguments, inputLine|
+            inputLine.split[1..-1].each do |e|
+              @users.currentUser.unalias(e)
+            end
+          end
+        },
+        :saveConfig => {
+          :pattern => /^saveConfig/,
+          :lambda  => lambda do |arguments, inputLine|
+            @users.currentUser.saveConfig
+          end
+        },
+        :default => {
+          :pattern => nil,
+          :lambda  => lambda do |arguments, inputLine|
+            unless @kpengine.engine inputLine
+              if File.directory? arguments[0]
+                Dir.chdir arguments[0]
+                break
+              end
+
+              puts "\"#{arguments[0]}\" is not a KSL2 Command"
+
+              @commands.each do |e|
+                if 1 <= match(e, arguments[0].to_s) || 1 <= match(arguments[0].to_s, e)
+                  e = "\e[35m" +  e + "\e[0m"
+                  puts "Did you mean \"#{e}\"?"
+                end
+              end
+            end
+          end
+        }
+      })
 
       puts "loaded plugins:"
       @kpengine.kpstore.showPlugins
@@ -88,21 +268,21 @@ module KSLCommandLine
           elsif arg == "&&" || arg == ";"
             indexOfCommands += 1
             next
-          end# End of if
+          end
 
           if commands[indexOfCommands] == nil
             commands[indexOfCommands] = arg + " "
           else
             commands[indexOfCommands] += arg + " "
-          end# End of if
-        end# End of each
+          end
+        end
 
         pipes = Array.new
 
         if pipeFlag
           pipes = Array.new(commands.count - 1){ IO.pipe }
           pipes = [STDIN, pipes.flatten.reverse, STDOUT].flatten
-        end# End of if
+        end
 
         commands.each do |command|
           rr = nil
@@ -112,7 +292,7 @@ module KSLCommandLine
             rr, ww  = pipes.shift 2
             $stdin  = rr if rr
             $stdout = ww if ww
-          end# End of if
+          end
 
           # Embedded Functions
           inputLine = command
@@ -124,119 +304,11 @@ module KSLCommandLine
             $stdout = File.open(fname, "w")
             inputLine.gsub!(/\s?>.*/, "")
             redirectFlag = true
-          end# End of if
+          end
 
-          # Todo: remove split -> regex
-          if inputLine =~ /^exit/
-            if @users.exit
-              if @users.nestedLogin
-                @users.logout
-              else
-                return :exitKSL
-              end# End of if
-            end# End of if
-          elsif inputLine =~ /^cd/
-            args = inputLine.split
-
-            if args[1].to_s.empty?
-              args[1] = @users.currentUser.home
-            end# End of if
-
-            unless File.exist?(args[1])
-              puts "no such file or directory: \'#{args[1]}\'"
-            else
-              Dir.chdir(args[1])
-            end#End of if
-          elsif inputLine =~ /^help/
-            puts "commands:"
-            
-            @commands.each do |e|
-              puts "  " + e.to_s
-            end# End of if
-          elsif inputLine =~ /^sudo/
-            @users.currentUser.sudo
-          elsif inputLine =~ /^\.\D+.*$/
-            inputLine = inputLine[1..-1]
-            puts "system => #{inputLine}"
-            system(inputLine)
-          elsif inputLine =~ /^sherb/
-            pluginName = inputLine.split[1]
-            print "=> "
-            lines = ""
-
-            STDIN.each_line do |input|
-              print "=> "
-              lines += input
-            end# End of if
-
-            pluginHash = {
-              "command" => pluginName,
-              "level"   => 0,
-              "script"  => lines
-            }
-
-            @kpengine.kpstore.addPlugin @kpengine.kpl.loadByHash(pluginHash)
-          elsif inputLine =~ /^users/
-            @users.users.each do |user|
-              puts user
-            end# End of each
-          elsif inputLine =~ /^login/
-            @users.login inputLine.split[1]
-          elsif inputLine =~ /^createuser/
-            userName = inputLine.split[1]
-            if userName == "" || userName == nil
-              puts "Empty user name is not allowed."
-            else
-              @users.addUser userName
-            end# End of if
-          # Plugin Manager
-          elsif inputLine =~ /^pluginManager/
-            pluginLine = inputLine.split("pluginManager")[1]
-            if pluginLine =~ /enable/
-              @kpengine.enable pluginLine.split[1]
-            elsif pluginLine =~ /disable/
-              @kpengine.disable pluginLine.split[1]
-            elsif pluginLine =~ /list/
-              @kpengine.kpstore.showPlugins
-            end# End of if
-          elsif inputLine =~ /^rbitpr/
-            eval(inputLine.split("rbitpr")[1])
-          elsif inputLine =~ /^aliases/
-            p @users.currentUser.aliases
-          elsif inputLine =~ /^alias/
-            inputLine.gsub!("alias ", "")
-            unless inputLine.include?("=")
-              puts "[Error -> Add alias failed] : Your foramt is wrong"
-            else
-              puts "Add alias : #{{inputLine.split("=")[0].strip => inputLine.split("=")[1..-1].join("=").strip}}"
-              @users.currentUser.addAlias({
-                :contracted => inputLine.split("=")[0].strip,
-                :expanded   => inputLine.split("=")[1..-1].join("=").strip
-              })
-            end# End of if
-          elsif inputLine =~ /^unalias/
-            inputLine.split[1..-1].each do |e|
-              @users.currentUser.unalias(e)
-            end# End of each
-          elsif inputLine =~ /^saveConfig/
-            @users.currentUser.saveConfig
-          else
-            unless @kpengine.engine inputLine
-              if File.directory?(inputLine.split[0])
-                Dir.chdir(inputLine.split[0])
-                break
-              end# End of if
-
-              puts "\"#{inputLine.split[0]}\" is not a KSL2 Command"
-
-              @commands.each do |e|
-                if 1 <= match(e, inputLine.split[0].to_s) || 1 <= match(inputLine.split[0].to_s, e)
-                  e = "\e[35m" +  e + "\e[0m"
-                  puts "Did you mean \"#{e}\"?"
-                end# End of if
-              end# End of each
-            end#End of unless
-          end# End of if
+          if :exitKSL == @kemachine.execute(inputLine)
+            exit
+          end
 
           $stdout = STDOUT if redirectFlag
 
@@ -245,10 +317,10 @@ module KSLCommandLine
             ww.close if ww && ww != STDOUT
             $stdout = STDOUT
             $stdin  = STDIN
-          end# End of if
-        end# End of each
-      end# End of loop
-    end# End of method
+          end
+        end
+      end
+    end
 
     private
     def getPrompt
@@ -256,12 +328,12 @@ module KSLCommandLine
         return "# "
       else
         return "% "
-      end# End of if
-    end# End of method
-  end# End of class
-end# End of module
+      end
+    end
+  end
+end
 
 if __FILE__ == $0
   kcl = KSLCommandLine::KSLCommandLine.new
-  kcl.commandLinE
+  kcl.commandLine
 end
