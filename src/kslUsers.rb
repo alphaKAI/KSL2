@@ -24,7 +24,7 @@ module KSLUsers
       @userLevel = level == 1 ? 1 : 0
       @name      = name
       @orgname   = @name
-      @sudo      = false
+      @suMode    = false
       @config    = Hash.new
       @configFilePath = $srcPath + "/config/#{@name}.yaml"
 
@@ -77,9 +77,10 @@ module KSLUsers
       File.write(@configFilePath, YAML.dump(@config))
     end
 
-    def sudo
+    def suMode
       success = false
       
+      # try limit
       3.times do
         if auth
           success = true
@@ -89,15 +90,15 @@ module KSLUsers
 
       if(success)
         @userLevel = 1
-        @sudo      = true
-        @name     += "\e[35m[sudo]\e[0m"
+        @suMode    = true
+        @name     += "\e[35m[suMode]\e[0m"
       end
     end
 
     def exit
-      if @sudo == true
+      if @suMode == true
         @userLevel = 0
-        @sudo      = false
+        @suMode    = false
         @name = @orgname
         return false
       else

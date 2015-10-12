@@ -33,7 +33,8 @@ Yet Another UNIX Like Shell Environment with Ruby.
   
   
 #Documents
-WIP  
+English : WIP  
+Japanese : WIP
   
   
 #Rquirements

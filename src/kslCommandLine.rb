@@ -37,16 +37,32 @@ module KSLCommandLine
         end
       end
 
-      @embeddedCommands = ["exit", "sudo", "cd", "sherb",
+      @embeddedCommands = ["exit", "sudo", "suMode", "cd", "sherb",
                            "help", "users", "login", "createuser",
-                           "pluginManager", "enable", "disable", "list",
-                           "rbitpr", "aliases", "alias", "unalias", "saveConfig"]
+                           "pluginManager", "rbitpr", "aliases",
+                           "alias", "unalias", "saveConfig"]
       @pluginCommands   = @kpengine.kpstore.plugins.keys
       @commands         = @embeddedCommands + @pluginCommands
 
+      # Todo: Sherbコマンドに関して、引数に有効なKSL2シェルスクリプトへのファイルパスが渡された場合(今後は標準入力も受け取りたいけど)
+      #       そのシェルスクリプトをどう扱うかを考え実装する
+      # Todo: そもそものシェルスクリプト実装をちゃんとする
+      #       for等のシェルスクリプトコマンドを実装(DSLを実装)
       @kemachine.registerEventsByHash({
+        :sh => {
+          :pattern => /^sh $/,
+          :lambda => lambda do |arguments, inputLine|
+            @currentMode = :shMode
+          end
+        },
+        :exsh => {
+          :pattern => /^exsh $/,
+          :lambda => lambda do |arguments, inputLine|
+            @currentMode = :normalMode
+          end
+        },
         :exit => {
-          :pattern => /^exit/,
+          :pattern => /^exit $/,
           :lambda  => lambda do |arguments, inputLine|
             if @users.exit
               if @users.nestedLogin
@@ -72,7 +88,7 @@ module KSLCommandLine
           end
         },
         :help => {
-          :pattern => /^help/,
+          :pattern => /^help $/,
           :lambda  => lambda do |arguments, inputLine|
             puts "commands:"
 
@@ -84,7 +100,20 @@ module KSLCommandLine
         :sudo => {
           :pattern => /^sudo/,
           :lambda  => lambda do |arguments, inputLine|
-            @users.currentUser.sudo
+            if(arguments.length < 2)
+              puts "[Error - sudo]"
+              puts "Can't execute empty order"
+            else
+              @users.currentUser.suMode
+              processLine arguments[1..-1].join(" ")
+              @users.currentUser.exit
+            end
+          end
+        },
+        :suMode => {
+          :pattern => /^suMode $/,
+          :lambda  => lambda do |arguments, inputLine|
+            @users.currentUser.suMode
           end
         },
         :dot => {
@@ -92,7 +121,7 @@ module KSLCommandLine
           :lambda => lambda do |arguments, inputLine|
             inputLine = inputLine[1..-1]
 
-            puts "system => #{inputLine}"
+            #puts "system => #{inputLine}"
 
             system(inputLine)
           end
@@ -100,23 +129,28 @@ module KSLCommandLine
         :sherb => {
           :pattern =>  /^sherb/,
           :lambda  => lambda do |arguments, inputLine|
-            pluginName = arguments[1]
+            puts :sherb
+            if arguments.length < 2
+              puts "[Error] : Empty user name is not allowed."
+            else
+              pluginName = arguments[1]
 
-            print "=> "
-            lines = ""
-
-            STDIN.each_line do |input|
               print "=> "
-              lines += input
+              lines = ""
+
+              STDIN.each_line do |input|
+                print "=> "
+                lines += input
+              end
+
+              pluginHash = {
+                "command" => pluginName,
+                "level"   => 0,
+                "script"  => lines
+              }
+
+              @kpengine.kpstore.addPlugin @kpengine.kpl.loadByHash(pluginHash)
             end
-
-            pluginHash = {
-              "command" => pluginName,
-              "level"   => 0,
-              "script"  => lines
-            }
-
-            @kpengine.kpstore.addPlugin @kpengine.kpl.loadByHash(pluginHash)
           end
         },
         :users => {
@@ -162,20 +196,27 @@ module KSLCommandLine
         :rbitpr => {
           :pattern => /^rbitpr/,
           :lambda  => lambda do |arguments, inputLine|
-            eval(inputLine.split("rbitpr")[1])
+            begin
+              eval(inputLine.split("rbitpr")[1])
+            rescue => e
+              puts "[Error - rbitpr]"
+              puts e
+            end
           end
         },
         :aliases => {
           :pattern => /^aliases/,
           :lambda  => lambda do |arguments, inputLine|
-            p @users.currentUser.aliases
+            @users.currentUser.aliases.each do |short, long|
+              puts "#{short} -> #{long}"
+            end
           end
         },
         :alias => {
           :pattern => /^alias/,
           :lambda  => lambda do |arguments, inputLine|
             inputLine.gsub!("alias ", "")
-            
+
             unless inputLine.include?("=")
               puts "[Error -> Add alias failed] : Your foramt is wrong"
             else
@@ -227,97 +268,107 @@ module KSLCommandLine
       @kpengine.kpstore.showPlugins
     end
 
-    def commandLine
-      loop do
-        @pluginCommands = @kpengine.kpstore.plugins.keys
-        @commands       = @embeddedCommands + @pluginCommands
+    def processLine(inputLine)
+      # Alias -> Replace by alias table
+      unless inputLine.delete(" ") == ""
+        commandName = replaceStringbyTable(@users.currentUser.aliases, inputLine.split[0], :headFlag => true)
+        inputLine   = ([commandName] + inputLine.split[1..-1]).join(" ")
+      end
 
-        # initialize
-        $stdin  = STDIN
-        $stdout = STDOUT
+      pipeFlag = false
+      lineCommands = Array.new
+      indexOfCommands = 0
 
-        commands = @commands
-        entries  = Dir.entries(Dir.pwd).select do |e| !(e =~ /^\..*/) end
-        entries.delete(nil)
-        commands += entries
-        commands += @users.currentUser.aliases.keys
-
-        Readline.completion_proc = proc do |word|
-          commands.grep(/\A#{Regexp.quote word}/)
+      #Todo : Change - split pattern
+      # Use regex
+      inputLine.split.each do |arg|
+        if arg == "|"
+          pipeFlag = true
+          indexOfCommands += 1
+          next
+        elsif arg == "&&" || arg == ";"
+          indexOfCommands += 1
+          next
         end
 
-        prompt    = "\r\e[36m#{@users.currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
-        inputLine = Readline.readline(prompt, true)
-
-        # Alias -> Replace by alias table
-        unless inputLine.delete(" ") == ""
-          commandName = replaceStringbyTable(@users.currentUser.aliases, inputLine.split[0], :headFlag => true)
-          inputLine   = ([commandName] + inputLine.split[1..-1]).join(" ")
+        if lineCommands[indexOfCommands] == nil
+          lineCommands[indexOfCommands] = arg + " "
+        else
+          lineCommands[indexOfCommands] += arg + " "
         end
+      end
 
-        pipeFlag = false
-        commands = Array.new
-        indexOfCommands = 0
+      pipes = Array.new
 
-        #Todo : Change - split pattern
-        inputLine.split.each do |arg|
-          if arg == "|"
-            pipeFlag = true
-            indexOfCommands += 1
-            next
-          elsif arg == "&&" || arg == ";"
-            indexOfCommands += 1
-            next
-          end
+      if pipeFlag
+        pipes = Array.new(lineCommands.count - 1){ IO.pipe }
+        pipes = [STDIN, pipes.flatten.reverse, STDOUT].flatten
+      end
 
-          if commands[indexOfCommands] == nil
-            commands[indexOfCommands] = arg + " "
-          else
-            commands[indexOfCommands] += arg + " "
-          end
-        end
-
-        pipes = Array.new
+      lineCommands.each do |command|
+        rr = nil
+        ww = nil
 
         if pipeFlag
-          pipes = Array.new(commands.count - 1){ IO.pipe }
-          pipes = [STDIN, pipes.flatten.reverse, STDOUT].flatten
+          rr, ww  = pipes.shift 2
+          $stdin  = rr if rr
+          $stdout = ww if ww
         end
 
-        commands.each do |command|
-          rr = nil
-          ww = nil
+        # Embedded Functions
+        inputLine = command
+        inputLine.gsub!("~/", ENV["HOME"] + "/")
+        redirectFlag = false
 
-          if pipeFlag
-            rr, ww  = pipes.shift 2
-            $stdin  = rr if rr
-            $stdout = ww if ww
+        if inputLine =~ /.*\s>(.*)/
+          fname   = $1.delete(" ")
+          $stdout = File.open(fname, "w")
+          inputLine.gsub!(/\s?>.*/, "")
+          redirectFlag = true
+        end
+
+        if :exitKSL == @kemachine.execute(inputLine)
+          exit
+        end
+
+        $stdout = STDOUT if redirectFlag
+
+        if pipeFlag
+          rr.close if rr && rr != STDIN
+          ww.close if ww && ww != STDOUT
+          $stdout = STDOUT
+          $stdin  = STDIN
+        end
+      end
+    end
+
+    def commandLine
+      loop do
+        begin
+          @pluginCommands = @kpengine.kpstore.plugins.keys
+          @commands       = @embeddedCommands + @pluginCommands
+
+          # initialize
+          $stdin  = STDIN
+          $stdout = STDOUT
+
+          commands = @commands
+          entries  = Dir.entries(Dir.pwd).select do |e| !(e =~ /^\..*/) end
+          entries.delete(nil)
+          commands += entries
+          commands += @users.currentUser.aliases.keys
+
+          Readline.completion_proc = proc do |word|
+            commands.grep(/\A#{Regexp.quote word}/)
           end
 
-          # Embedded Functions
-          inputLine = command
-          inputLine.gsub!("~/", ENV["HOME"] + "/")
-          redirectFlag = false
+          prompt    = "\r\e[36m#{@users.currentUser.name}\e[0m\e[36m@#{@hostname}\e[0m \e[31m[KSL2]\e[0m \e[1m#{pathCompress(Dir.pwd)}\e[0m #{getPrompt}"
+          inputLine = Readline.readline(prompt, true)
 
-          if inputLine =~ /.*\s>(.*)/
-            fname   = $1.delete(" ")
-            $stdout = File.open(fname, "w")
-            inputLine.gsub!(/\s?>.*/, "")
-            redirectFlag = true
-          end
-
-          if :exitKSL == @kemachine.execute(inputLine)
-            exit
-          end
-
-          $stdout = STDOUT if redirectFlag
-
-          if pipeFlag
-            rr.close if rr && rr != STDIN
-            ww.close if ww && ww != STDOUT
-            $stdout = STDOUT
-            $stdin  = STDIN
-          end
+          processLine(inputLine)
+        rescue => e
+          puts "[Error -> commandLine]"
+          puts e
         end
       end
     end

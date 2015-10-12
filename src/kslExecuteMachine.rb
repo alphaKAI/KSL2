@@ -23,7 +23,7 @@ module KSLExecuteMachine
     def registerEvent(eventName, behaviorHash)
       @behaviorDefinedHash[eventName] = {
         :pattern => behaviorHash[:pattern],
-        :lambda => behaviorHash[:lambda]
+        :lambda  => behaviorHash[:lambda]
       }
     end
 
@@ -55,6 +55,9 @@ module KSLExecuteMachine
         puts "\e[32m REGEX -> #{value[:pattern]} \e[0m" if $KEM_DEBUG
 
         if value[:pattern] != nil && inputLine =~ value[:pattern]
+          if $KEM_DEBUG
+            puts name
+          end
           eventName = name
           break
         end

@@ -5,3 +5,7 @@ Session.vim
 todo
 .*.swp
 .*.*.swp
+
+OptionParser.rb
+document.ja.md
+kslShellScript.rb
