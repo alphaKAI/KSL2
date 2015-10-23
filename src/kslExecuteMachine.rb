@@ -12,8 +12,11 @@ $KEM_DEBUG = false
 
 module KSLExecuteMachine
   class ExecuteMachine
+    attr_reader :regexes
+
     def initialize
       @behaviorDefinedHash = Hash.new
+      @regexes = Array.new
     end
 
     def eventExists?(eventName)
@@ -25,6 +28,7 @@ module KSLExecuteMachine
         :pattern => behaviorHash[:pattern],
         :lambda  => behaviorHash[:lambda]
       }
+      @regexes << behaviorHash[:pattern]
     end
 
     def registerEventsByHash(behaviorsHash)

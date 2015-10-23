@@ -12,7 +12,9 @@ $srcPath = $KSL_Bin_Path + "/../src/"
 require $srcPath + "kslPlugin.rb"
 require $srcPath + "kslUsers.rb"
 require $srcPath + "kslUtils.rb"
+require $srcPath + "kslEnvironment.rb"
 require $srcPath + "kslExecuteMachine.rb"
+require $srcPath + "kslScriptEngine.rb"
 require "readline"
 require "socket"
 
@@ -26,8 +28,10 @@ module KSLCommandLine
       @currentMode = :normalMode
       user         = KSLUsers::KSLUser.new(Process::UID.eid == 0 ? 1 : 0, ENV["USER"])
       @users       = KSLUsers::KSLUsers.new user
+      @kslenv      = KSLEnvironment::KSLEnvironment.new
       @kpengine    = KSLPlugin::PluginEngine.new @users.currentUser
       @kemachine   = KSLExecuteMachine::ExecuteMachine.new
+      @kshengine   = KSLScriptEngine::ScriptEngine.new(@kemachine, @kslenv)
       @hostname    = Socket.gethostname
       @pluginDir   = $srcPath + "/plugins"
 
@@ -50,19 +54,19 @@ module KSLCommandLine
       #       for等のシェルスクリプトコマンドを実装(DSLを実装)
       @kemachine.registerEventsByHash({
         :sh => {
-          :pattern => /^sh $/,
+          :pattern => /^sh(?!\w+)/,
           :lambda => lambda do |arguments, inputLine|
             @currentMode = :shMode
           end
         },
         :exsh => {
-          :pattern => /^exsh $/,
+          :pattern => /^exsh/,
           :lambda => lambda do |arguments, inputLine|
             @currentMode = :normalMode
           end
         },
         :exit => {
-          :pattern => /^exit $/,
+          :pattern => /^exit/,
           :lambda  => lambda do |arguments, inputLine|
             if @users.exit
               if @users.nestedLogin
@@ -88,7 +92,7 @@ module KSLCommandLine
           end
         },
         :help => {
-          :pattern => /^help $/,
+          :pattern => /^help/,
           :lambda  => lambda do |arguments, inputLine|
             puts "commands:"
 
@@ -111,7 +115,7 @@ module KSLCommandLine
           end
         },
         :suMode => {
-          :pattern => /^suMode $/,
+          :pattern => /^suMode/,
           :lambda  => lambda do |arguments, inputLine|
             @users.currentUser.suMode
           end
@@ -242,6 +246,22 @@ module KSLCommandLine
             @users.currentUser.saveConfig
           end
         },
+        :set => {
+          :pattern => /^set/,
+          :lambda  => lambda do |arguments, inputLine|
+            argumentsLine = arguments[1..-1].join
+            @kslenv.setEnv(argumentsLine.split("=")[0], argumentsLine.split("=")[1])
+          end
+        },
+        :unset => {
+          :pattern => /^unset/,
+          :lambda  => lambda do |arguments, inputLine|
+            if arguments.length != 2
+              puts "[Error -> wrong arguments(unset)] unset command require only 2 arguments."
+            end
+            @kslenv.deleteEnv(arguments[1])
+          end
+        },
         :default => {
           :pattern => nil,
           :lambda  => lambda do |arguments, inputLine|
@@ -251,12 +271,28 @@ module KSLCommandLine
                 break
               end
 
-              puts "\"#{arguments[0]}\" is not a KSL2 Command"
+              # KSLScriptEngineのインスタンスに入力を渡してみる。
+              # もしも渡されたコマンドがしぇるくすくりぷとの一部だった場合はそれ以降の標準入力はKSLScriptEngineが受け付ける。
+              inputBuffer = Array.new
+              @kshengine.checkInput(inputLine)
+              inputBuffer << inputLine.chomp
+              while(!@kshengine.blockTokenStack.empty?)
+                print "shellMode =>"
+                input = STDIN.gets
+                @kshengine.checkInput(input)
+                inputBuffer << input.chomp
+              end
 
-              @commands.each do |e|
-                if 1 <= match(e, arguments[0].to_s) || 1 <= match(arguments[0].to_s, e)
-                  e = "\e[35m" +  e + "\e[0m"
-                  puts "Did you mean \"#{e}\"?"
+              shellScript = @kshengine.engine(inputBuffer)
+
+              if(!shellScript)
+                puts "\"#{arguments[0]}\" is not a KSL2 Command"
+
+                @commands.each do |e|
+                  if 1 <= match(e, arguments[0].to_s) || 1 <= match(arguments[0].to_s, e)
+                    e = "\e[35m" +  e + "\e[0m"
+                    puts "Did you mean \"#{e}\"?"
+                  end
                 end
               end
             end
@@ -319,6 +355,11 @@ module KSLCommandLine
         inputLine = command
         inputLine.gsub!("~/", ENV["HOME"] + "/")
         redirectFlag = false
+
+        dontReplaceEnvCommandNames = ["set", "unset"]
+        unless dontReplaceEnvCommandNames.include?(inputLine.split[0])
+          inputLine = @kslenv.replaceEnvs(inputLine)
+        end
 
         if inputLine =~ /.*\s>(.*)/
           fname   = $1.delete(" ")
