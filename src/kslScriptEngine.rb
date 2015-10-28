@@ -8,6 +8,8 @@
   The MIT License.
 =end
 
+$KSH_DEBUG = false
+
 module KSLScriptEngine
   class ScriptEngine
     attr_reader :blockTokenStack
@@ -31,7 +33,9 @@ module KSLScriptEngine
       @tokenPairs = {
         "|" => "|",
         "[" => "]",
-        "(" => ")"
+        "(" => ")",
+        "\"" => "\"",
+        "\'" => "\'"
       }
       @tokenPairs_reversed ={}
       @tokenPairs.each do |k, v|
@@ -61,12 +65,16 @@ module KSLScriptEngine
         end
       end
 
+      #Error Handling
       begin
         executeByRuby(inputLine.join(";"))
       rescue => e
-        puts "[Exception -> KSLScriptEngine::ScriptEngine.engine] : #{e}"
+        if $KSH_DEBUG
+          puts "[Exception -> KSLScriptEngine::ScriptEngine.engine] : #{e}"
+        end
         return false
       end
+
       return true
     end
 
@@ -91,7 +99,9 @@ module KSLScriptEngine
             if c == e
               t = @tokenStack.pop
               unless t == b
-                puts "[Error -> KSLScriptEngine::ScriptEngine.checkInput] syntax error"
+                if $KSH_DEBUG
+                  puts "[Error -> KSLScriptEngine::ScriptEngine.checkInput] syntax error"
+                end
                 return false
               end
             end
@@ -113,7 +123,9 @@ module KSLScriptEngine
               end
               t = @blockTokenStack.pop
               unless @blockTokenPairs[t] == c
-                puts "[Error -> KSLScriptEngine::ScriptEngine.checkInput(btp)] syntax error"
+                if $KSH_DEBUG
+                  puts "[Error -> KSLScriptEngine::ScriptEngine.checkInput(btp)] syntax error"
+                end
                 return false
               else
                 return true

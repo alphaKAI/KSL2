@@ -53,18 +53,6 @@ module KSLCommandLine
       # Todo: そもそものシェルスクリプト実装をちゃんとする
       #       for等のシェルスクリプトコマンドを実装(DSLを実装)
       @kemachine.registerEventsByHash({
-        :sh => {
-          :pattern => /^sh(?!\w+)/,
-          :lambda => lambda do |arguments, inputLine|
-            @currentMode = :shMode
-          end
-        },
-        :exsh => {
-          :pattern => /^exsh/,
-          :lambda => lambda do |arguments, inputLine|
-            @currentMode = :normalMode
-          end
-        },
         :exit => {
           :pattern => /^exit/,
           :lambda  => lambda do |arguments, inputLine|
@@ -277,7 +265,7 @@ module KSLCommandLine
               @kshengine.checkInput(inputLine)
               inputBuffer << inputLine.chomp
               while(!@kshengine.blockTokenStack.empty?)
-                print "shellMode =>"
+                print "blockInput =>"
                 input = STDIN.gets
                 @kshengine.checkInput(input)
                 inputBuffer << input.chomp
