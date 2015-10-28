@@ -6,7 +6,7 @@ todo
 .*.swp
 .*.*.swp
 
-src/plugins/base64.yaml
+base64.yaml
 
 OptionParser.rb
 document.ja.md
