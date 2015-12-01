@@ -18,10 +18,10 @@ module KSLUsers
   The user system for KSL user.(This class is only user system. Not user management system.)
 =end
   class KSLUser
-    attr_reader :name
+    attr_reader :name, :userLevel
     def initialize(level, name)
       # Normal : 0, Root : 1
-      @userLevel = level == 1 ? 1 : 0
+      @userLevel = name == "root" ? 1 : 0#level == 1 ? 1 : 0
       @name      = name
       @orgname   = @name
       @suMode    = false
@@ -97,6 +97,7 @@ module KSLUsers
 
     def exit
       if @suMode == true
+        #Todo neetTo fix
         @userLevel = 0
         @suMode    = false
         @name = @orgname
@@ -218,6 +219,7 @@ module KSLUsers
         if @users[userName].auth("Please input password for #{userName}")
           @prevUser.push(@currentUser)
           @nestedLogin = true
+          #Todo : fix user permission rule
           @currentUser = KSLUser.new(0, userName)
           @users[@currentUser.name] = @currentUser
           return true

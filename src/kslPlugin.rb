@@ -29,13 +29,13 @@ module KSLPlugin
 
     def callable?(args)
       arr = self.method(@commandName.to_sym).parameters.flatten
-      
+
       unless arr.include?(:req)
         return true
       end
 
       reqs = arr.count(:req)
-      
+
       if reqs != args.length
         puts "\"#{@commandName}\" command require #{reqs} arguments"
         return false
@@ -46,7 +46,7 @@ module KSLPlugin
 
     def exec(args = [])
       eval(@script) unless @evaled
-      
+
       if args.length > 0
         argString = args.map{|elem| "\"#{elem}\"" }.join(", ")
         eval("#{@commandName} #{argString}") if callable?(args)
@@ -97,8 +97,8 @@ module KSLPlugin
 =end
   class PluginStore
     attr_reader :plugins
-    def initialize(kslUser)
-      @ksluser = kslUser
+    def initialize(kslUsers)
+      @kslusers = kslUsers
       @plugins = Hash.new
     end
 
@@ -108,7 +108,7 @@ module KSLPlugin
         enable(plugin.commandName)
       end
     end
-  
+
     def enable(pluginName)
       if self.exists?(pluginName)
         @plugins[pluginName].enabled = true
@@ -118,7 +118,7 @@ module KSLPlugin
         return false
       end
     end
-    
+
     def disable(pluginName)
       if self.exists?(pluginName)
         @plugins[pluginName].enabled = false
@@ -148,14 +148,14 @@ module KSLPlugin
 
       if thisPlugin.enabled
         permitExecute = false
-      
+
         if thisPlugin.level == 0
           permitExecute = true
         else
-          if @ksluser.root?
+          if @kslusers.currentUser.root?
             permitExecute = true
           else
-            if @ksluser.auth("!! This plugin require root privilege. If you wish to use this, you at your own risk.  !!")
+            if @kslusers.currentUser.auth("!! This plugin require root privilege. If you wish to use this, you at your own risk.  !!")
               permitExecute = true
             else
               puts "auth failed"
@@ -185,10 +185,10 @@ module KSLPlugin
 =end
   class PluginEngine
     attr_accessor :kpl, :kpstore
-    def initialize(kslUser)
-      @ksluser = kslUser
+    def initialize(kslUsers)
+      @kslusers = kslUsers
       @kpl     = PluginLoader.new
-      @kpstore = PluginStore.new(@ksluser)
+      @kpstore = PluginStore.new(@kslusers)
     end
 
     def engine(line)

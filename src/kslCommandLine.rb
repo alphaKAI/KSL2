@@ -29,7 +29,7 @@ module KSLCommandLine
       user         = KSLUsers::KSLUser.new(Process::UID.eid == 0 ? 1 : 0, ENV["USER"])
       @users       = KSLUsers::KSLUsers.new user
       @kslenv      = KSLEnvironment::KSLEnvironment.new
-      @kpengine    = KSLPlugin::PluginEngine.new @users.currentUser
+      @kpengine    = KSLPlugin::PluginEngine.new @users
       @kemachine   = KSLExecuteMachine::ExecuteMachine.new
       @kshengine   = KSLScriptEngine::ScriptEngine.new(@kemachine, @kslenv)
       @hostname    = Socket.gethostname

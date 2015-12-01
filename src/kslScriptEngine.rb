@@ -37,6 +37,7 @@ module KSLScriptEngine
         "\"" => "\"",
         "\'" => "\'"
       }
+
       @tokenPairs_reversed ={}
       @tokenPairs.each do |k, v|
         @tokenPairs_reversed[v] = k
@@ -50,7 +51,7 @@ module KSLScriptEngine
       inputLine = inputLines.map do |line|
         cmdName = line.split[0]
         isKemEvent = false
-        
+
         @kemachine.regexes.each do |ptn|
           if ptn =~ cmdName
             isKemEvent = true
