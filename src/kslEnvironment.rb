@@ -30,7 +30,7 @@ module KSLEnvironment
       if @KSLENV.keys.include?(key)
         return @KSLENV[key]
       else
-        #puts "[Error] - Undefined such a ENV : #{key}"
+        puts "[Error] - Undefined such a ENV : #{key}"
         return ""
       end
     end
