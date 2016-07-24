@@ -88,6 +88,11 @@ module KSLScriptEngine
       @kemachine.execute(input)
     end
 
+    def clearStack
+      @tokenStack = []
+      @blockTokenStack = []
+    end
+
     def checkInput(inputLine)
         inputLine.split("").each do |c|
           @tokenPairs.keys.each do |tk|

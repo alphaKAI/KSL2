@@ -261,6 +261,10 @@ module KSLCommandLine
 
               # KSLScriptEngineのインスタンスに入力を渡してみる。
               # もしも渡されたコマンドがしぇるくすくりぷとの一部だった場合はそれ以降の標準入力はKSLScriptEngineが受け付ける。
+              # blockInputの途中でCtrl+Dとかで抜けられた場合に、ScriptEngineの内部のスタックが残ったままで次回の挙動に影響を与える。
+              # それを回避するためにスタックを事前にクリアーする
+              @kshengine.clearStack
+
               inputBuffer = Array.new
               @kshengine.checkInput(inputLine)
               inputBuffer << inputLine.chomp
