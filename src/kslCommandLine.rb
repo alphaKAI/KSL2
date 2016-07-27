@@ -297,6 +297,11 @@ module KSLCommandLine
     end
 
     def processLine(inputLine)
+      # exit if inputLine is nil, respond to Ctrl+D
+      if inputLine == nil
+        exit
+      end
+
       # Alias -> Replace by alias table
       unless inputLine.delete(" ") == ""
         commandName = replaceStringbyTable(@users.currentUser.aliases, inputLine.split[0], :headFlag => true)
