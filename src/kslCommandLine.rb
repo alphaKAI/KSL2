@@ -308,8 +308,8 @@ module KSLCommandLine
         inputLine   = ([commandName] + inputLine.split[1..-1]).join(" ")
       end
 
-      pipeFlag = false
-      lineCommands = Array.new
+      pipeFlag        = false
+      lineCommands    = Array.new
       indexOfCommands = 0
 
       #Todo : Change - split pattern
