@@ -314,21 +314,27 @@ module KSLCommandLine
 
       #Todo : Change - split pattern
       # Use regex
-      inputLine.split.each do |arg|
-        if arg == "|"
-          pipeFlag = true
-          indexOfCommands += 1
-          next
-        elsif arg == "&&" || arg == ";"
-          indexOfCommands += 1
-          next
-        end
+      procCommandLine = lambda {|commandString|
+        commandString.split.each do |arg|
+          if arg == "&&" || arg == ";"
+            indexOfCommands += 1
+            next
+          end
 
-        if lineCommands[indexOfCommands] == nil
-          lineCommands[indexOfCommands] = arg + " "
-        else
-          lineCommands[indexOfCommands] += arg + " "
+          if lineCommands[indexOfCommands] == nil
+            lineCommands[indexOfCommands] = arg + " "
+          else
+            lineCommands[indexOfCommands] += arg + " "
+          end
         end
+        indexOfCommands += 1
+      }
+
+      if inputLine.include? "|"
+        pipeFlag = true
+        inputLine.split("|").each do |command| procCommandLine.call(command) end
+      else
+        procCommandLine.call(inputLine)
       end
 
       pipes = Array.new
@@ -362,6 +368,11 @@ module KSLCommandLine
           fname   = $1.delete(" ")
           $stdout = File.open(fname, "w")
           inputLine.gsub!(/\s?>.*/, "")
+          redirectFlag = true
+        elsif inputLine =~ /.*\s>>(.*)/
+          fname   = $1.delete(" ")
+          $stdout = File.open(fname, "a")
+          inputLine.gsub!(/\s?>>.*/, "")
           redirectFlag = true
         end
 
