@@ -38,7 +38,7 @@ module KSLEnvironment
     def replaceEnvs(line)
       return line.split.map do |e|
         r = e.scan(/\$\w+/)
-        r.empty? ? e : self.getEnv(r[0])
+        r.empty? ? e : self.getEnv(r[0][1..-1])
       end.join(" ")
     end
   end
