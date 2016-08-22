@@ -80,7 +80,7 @@ module KSLCommandLine
           end
         },
         :help => {
-          :pattern => /^help/,
+          :pattern => /^help$/,
           :lambda  => lambda do |arguments, inputLine|
             puts "commands:"
 
@@ -121,9 +121,8 @@ module KSLCommandLine
         :sherb => {
           :pattern =>  /^sherb/,
           :lambda  => lambda do |arguments, inputLine|
-            puts :sherb
             if arguments.length < 2
-              puts "[Error] : Empty user name is not allowed."
+              puts "[Error] : Empty plugin name is not allowed."
             else
               pluginName = arguments[1]
 
